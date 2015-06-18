@@ -1,0 +1,61 @@
+attributes:
+  glance_user:
+    value: 'glance'
+    label: 'Ceph Images User'
+    description: 'Ceph Username for images'
+    weight: 25
+    type: "text"
+  glance_key:
+    value: ''
+    label: 'Ceph key for Images User'
+    description: 'Ceph key for Images User'
+    weight: 35
+    type: "password"
+  cinder_user:
+    value: 'cinder'
+    label: 'Ceph Volume User'
+    description: 'Ceph Username for volumes'
+    weight: 25
+    type: "text"
+  cinder_key:
+    value: ''
+    label: 'Ceph key for Volume User'
+    description: 'Ceph key for Volume User'
+    weight: 35
+    type: "password"
+  compute_user:
+    value: 'nova'
+    label: 'Ceph Compute User'
+    description: 'Ceph Username for Ephemeral drives'
+    weight: 25
+    type: "text"
+  compute_key:
+    value: ''
+    label: 'Ceph key for Compute User'
+    description: 'Ceph key for Compute User'
+    weight: 35
+    type: "password"
+  glance_pool:
+    value: 'images'
+    label: 'Ceph pool for images'
+    description: 'Ceph pool for images'
+    weight: 25
+    type: "text"
+  cinder_pool:
+    value: 'volumes'
+    label: 'Ceph pool for volumes'
+    description: 'Ceph pool for volumes'
+    weight: 25
+    type: "text"
+  compute_pool:
+    value: 'compute'
+    label: 'Ceph pool for compute'
+    description: 'Ceph pool for Ephemeral drives'
+    weight: 25
+    type: "text"
+  ephemeral_ceph:
+    value: true
+    label: 'Use CEPH for Nova Ephemeral drives'
+    description: ''
+    weight: 25
+    type: "checkbox"

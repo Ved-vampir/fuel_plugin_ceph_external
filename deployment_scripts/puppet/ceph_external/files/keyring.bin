@@ -1,0 +1,7 @@
+[client.cinder]
+	key = AQDH8ExVWBijGRAABNUemhZz6H//x50gGdHEog==
+[client.nova]
+	key = AQDwOUlVAEbsMRAAbOPSskwCRQe0a4ZWhH/y7Q==
+[client.glance]
+	key = AQAAOklVeFBAOBAAxJOeHypW4WJlktFt+F3rVA==
+

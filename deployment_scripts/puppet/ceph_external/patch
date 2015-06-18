@@ -1,0 +1,430 @@
+diff --git a/deployment/puppet/ceph/manifests/conf.pp b/deployment/puppet/ceph/manifests/conf.pp
+index c825428..a12996e 100644
+--- a/deployment/puppet/ceph/manifests/conf.pp
++++ b/deployment/puppet/ceph/manifests/conf.pp
+@@ -1,73 +1,97 @@
+ # create new conf on primary Ceph MON, pull conf on all other nodes
+ class ceph::conf {
+-  if $::hostname == $::ceph::primary_mon {
+ 
+-    exec {'ceph-deploy new':
+-      command   => "ceph-deploy new ${::hostname}:${::internal_address}",
+-      cwd       => '/etc/ceph',
+-      logoutput => true,
+-      creates   => ['/etc/ceph/ceph.conf'],
+-    }
+-
+-    # link is necessary to work around http://tracker.ceph.com/issues/6281
+-    file {'/root/ceph.conf':
+-      ensure => link,
+-      target => '/etc/ceph/ceph.conf',
+-    }
+-
+-    file {'/root/ceph.mon.keyring':
+-      ensure => link,
+-      target => '/etc/ceph/ceph.mon.keyring',
+-    }
+-
+-    ceph_conf {
+-      'global/auth_supported':            value => $::ceph::auth_supported;
+-      'global/osd_journal_size':          value => $::ceph::osd_journal_size;
+-      'global/osd_mkfs_type':             value => $::ceph::osd_mkfs_type;
+-      'global/osd_pool_default_size':     value => $::ceph::osd_pool_default_size;
+-      'global/osd_pool_default_min_size': value => $::ceph::osd_pool_default_min_size;
+-      'global/osd_pool_default_pg_num':   value => $::ceph::osd_pool_default_pg_num;
+-      'global/osd_pool_default_pgp_num':  value => $::ceph::osd_pool_default_pgp_num;
+-      'global/cluster_network':           value => $::ceph::cluster_network;
+-      'global/public_network':            value => $::ceph::public_network;
+-    }
+-
+-    Exec['ceph-deploy new'] ->
+-    File['/root/ceph.conf'] -> File['/root/ceph.mon.keyring'] ->
+-    Ceph_conf <||>
+-
+-  } else {
+-
+-    exec {'ceph-deploy config pull':
+-      command => "ceph-deploy --overwrite-conf config pull ${::ceph::primary_mon}",
+-      creates => '/root/ceph.conf',
+-    }
++  file { 'ceph_dir':
++   ensure => directory,
++   path => '/etc/ceph',
++  }
++  file { 'ceph_conf':
++   ensure => present,
++   path   => '/etc/ceph/ceph.conf',
++   source => "puppet:///modules/ceph/ceph.conf",
++   mode => '0664',
++   require => File['ceph_dir'],
++  }
+ 
+-    exec {'ceph-deploy gatherkeys remote':
+-      command => "ceph-deploy gatherkeys ${::ceph::primary_mon}",
+-      creates => ['/root/ceph.bootstrap-mds.keyring',
+-                  '/root/ceph.bootstrap-osd.keyring',
+-                  '/root/ceph.client.admin.keyring',
+-                  '/root/ceph.mon.keyring',
+-                 ],
+-    }
++  file { 'keyring_bin':
++   ensure => present,
++   path   => '/etc/ceph/keyring.bin',
++   source => "puppet:///modules/ceph/keyring.bin",
++   mode => '0664',
++   require => File['ceph_dir'],
++  }
+ 
+-    file {'/etc/ceph/ceph.client.admin.keyring':
+-      ensure => file,
+-      source => '/root/ceph.client.admin.keyring',
+-      mode   => '0600',
+-      owner  => 'root',
+-      group  => 'root',
+-    }
++  File['ceph_conf'] -> File['keyring_bin']
+ 
+-    exec {'ceph-deploy init config':
+-      command => "ceph-deploy --overwrite-conf config push ${::hostname}",
+-      creates => '/etc/ceph/ceph.conf',
+-    }
+ 
+-    Exec['ceph-deploy config pull']       ->
+-    Exec['ceph-deploy gatherkeys remote'] ->
+-    File['/etc/ceph/ceph.client.admin.keyring'] ->
+-    Exec['ceph-deploy init config']
+-  }
++#  if $::hostname == $::ceph::primary_mon {
++#
++#    exec {'ceph-deploy new':
++#      command   => "ceph-deploy new ${::hostname}:${::internal_address}",
++#      cwd       => '/etc/ceph',
++#      logoutput => true,
++#      creates   => ['/etc/ceph/ceph.conf'],
++#    }
++#
++#    # link is necessary to work around http://tracker.ceph.com/issues/6281
++#    file {'/root/ceph.conf':
++#      ensure => link,
++#      target => '/etc/ceph/ceph.conf',
++#    }
++#
++#    file {'/root/ceph.mon.keyring':
++#      ensure => link,
++#      target => '/etc/ceph/ceph.mon.keyring',
++#    }
++#
++#    ceph_conf {
++#      'global/auth_supported':            value => $::ceph::auth_supported;
++#      'global/osd_journal_size':          value => $::ceph::osd_journal_size;
++#      'global/osd_mkfs_type':             value => $::ceph::osd_mkfs_type;
++#      'global/osd_pool_default_size':     value => $::ceph::osd_pool_default_size;
++#      'global/osd_pool_default_min_size': value => $::ceph::osd_pool_default_min_size;
++#      'global/osd_pool_default_pg_num':   value => $::ceph::osd_pool_default_pg_num;
++#      'global/osd_pool_default_pgp_num':  value => $::ceph::osd_pool_default_pgp_num;
++#      'global/cluster_network':           value => $::ceph::cluster_network;
++#      'global/public_network':            value => $::ceph::public_network;
++#    }
++#
++#    Exec['ceph-deploy new'] ->
++#    File['/root/ceph.conf'] -> File['/root/ceph.mon.keyring'] ->
++#    Ceph_conf <||>
++#
++#  } else {
++#
++#    exec {'ceph-deploy config pull':
++#      command => "ceph-deploy --overwrite-conf config pull ${::ceph::primary_mon}",
++#      creates => '/root/ceph.conf',
++#    }
++#
++#    exec {'ceph-deploy gatherkeys remote':
++#      command => "ceph-deploy gatherkeys ${::ceph::primary_mon}",
++#      creates => ['/root/ceph.bootstrap-mds.keyring',
++#                  '/root/ceph.bootstrap-osd.keyring',
++#                  '/root/ceph.client.admin.keyring',
++#                  '/root/ceph.mon.keyring',
++#                 ],
++#    }
++#
++#    file {'/etc/ceph/ceph.client.admin.keyring':
++#      ensure => file,
++#      source => '/root/ceph.client.admin.keyring',
++#      mode   => '0600',
++#      owner  => 'root',
++#      group  => 'root',
++#    }
++#
++#    exec {'ceph-deploy init config':
++#      command => "ceph-deploy --overwrite-conf config push ${::hostname}",
++#      creates => '/etc/ceph/ceph.conf',
++#    }
++#
++#    Exec['ceph-deploy config pull']       ->
++#    Exec['ceph-deploy gatherkeys remote'] ->
++#    File['/etc/ceph/ceph.client.admin.keyring'] ->
++#    Exec['ceph-deploy init config']
++#  }
+ }
+diff --git a/deployment/puppet/ceph/manifests/init.pp b/deployment/puppet/ceph/manifests/init.pp
+index 5ccfa50..47c86a5 100644
+--- a/deployment/puppet/ceph/manifests/init.pp
++++ b/deployment/puppet/ceph/manifests/init.pp
+@@ -76,63 +76,64 @@ class ceph (
+   # Re-enable ceph::yum if not using a Fuel iso with Ceph packages
+   #include ceph::yum
+ 
+-  include ceph::ssh
++#  include ceph::ssh
+   include ceph::params
+   include ceph::conf
+-  Class[['ceph::ssh', 'ceph::params']] -> Class['ceph::conf']
++#  Class[['ceph::ssh', 'ceph::params']] -> Class['ceph::conf']
++  Class[['ceph::params']] -> Class['ceph::conf']
+ 
+-  if $::fuel_settings['role'] =~ /controller|ceph/ {
+-    service {'ceph':
+-      ensure  => 'running',
+-      enable  => true,
+-      require => Class['ceph::conf']
+-    }
+-  }
++#  if $::fuel_settings['role'] =~ /controller|ceph/ {
++#    service {'ceph':
++#      ensure  => 'running',
++#      enable  => true,
++#      require => Class['ceph::conf']
++#    }
++#  }
+ 
+   case $::fuel_settings['role'] {
+     'primary-controller', 'controller', 'ceph-mon': {
+-      include ceph::mon
++#      include ceph::mon
+ 
+       # DO NOT SPLIT ceph auth command lines! See http://tracker.ceph.com/issues/3279
+-      ceph::pool {$glance_pool:
+-        user          => $glance_user,
+-        acl           => "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=${glance_pool}'",
+-        keyring_owner => 'glance',
+-      }
+-
+-      ceph::pool {$cinder_pool:
+-        user          => $cinder_user,
+-        acl           => "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=${cinder_pool}, allow rx pool=${glance_pool}'",
+-        keyring_owner => 'cinder',
+-      }
+-
+-      Class['ceph::conf'] -> Class['ceph::mon'] ->
+-      Ceph::Pool[$glance_pool] -> Ceph::Pool[$cinder_pool] ->
+-      Service['ceph']
+-
+-      if ($::ceph::use_rgw) {
+-        include ceph::radosgw
+-        Class['ceph::mon'] ->
+-        Class['ceph::radosgw'] ~>
+-        Service['ceph']
+-
+-        Class['::keystone'] -> Class['ceph::radosgw']
+-      }
++#      ceph::pool {$glance_pool:
++#        user          => $glance_user,
++#        acl           => "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=${glance_pool}'",
++#        keyring_owner => 'glance',
++#      }
++
++#      ceph::pool {$cinder_pool:
++#        user          => $cinder_user,
++#        acl           => "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=${cinder_pool}, allow rx pool=${glance_pool}'",
++#        keyring_owner => 'cinder',
++#      }
++
++#      Class['ceph::conf'] -> Class['ceph::mon'] ->
++#      Ceph::Pool[$glance_pool] -> Ceph::Pool[$cinder_pool] ->
++#      Service['ceph']
++
++#      if ($::ceph::use_rgw) {
++#        include ceph::radosgw
++#        Class['ceph::mon'] ->
++#        Class['ceph::radosgw'] ~>
++#        Service['ceph']
++#
++#        Class['::keystone'] -> Class['ceph::radosgw']
++#      }
+     }
+ 
+-    'ceph-osd': {
+-      if ! empty($osd_devices) {
+-        include ceph::osd
+-        Class['ceph::conf'] -> Class['ceph::osd'] ~> Service['ceph']
+-      }
+-    }
++#    'ceph-osd': {
++#      if ! empty($osd_devices) {
++#        include ceph::osd
++#        Class['ceph::conf'] -> Class['ceph::osd'] ~> Service['ceph']
++#      }
++#    }
+ 
+     'compute': {
+-      ceph::pool {$compute_pool:
+-        user          => $compute_user,
+-        acl           => "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=${cinder_pool}, allow rx pool=${glance_pool}, allow rwx pool=${compute_pool}'",
+-        keyring_owner => 'nova',
+-      }
++#      ceph::pool {$compute_pool:
++#        user          => $compute_user,
++#        acl           => "mon 'allow r' osd 'allow class-read object_prefix rbd_children, allow rwx pool=${cinder_pool}, allow rx pool=${glance_pool}, allow rwx pool=${compute_pool}'",
++#        keyring_owner => 'nova',
++#      }
+ 
+       include ceph::nova_compute
+ 
+@@ -143,12 +144,12 @@ class ceph (
+       }
+ 
+       Class['ceph::conf'] ->
+-      Ceph::Pool[$compute_pool] ->
++#      Ceph::Pool[$compute_pool] ->
+       Class['ceph::nova_compute'] ~>
+       Service[$::ceph::params::service_nova_compute]
+     }
+ 
+-    'ceph-mds': { include ceph::mds }
++#    'ceph-mds': { include ceph::mds }
+ 
+     default: {}
+   }
+diff --git a/deployment/puppet/ceph/manifests/nova_compute.pp b/deployment/puppet/ceph/manifests/nova_compute.pp
+index d4c13e3..793cc33 100644
+--- a/deployment/puppet/ceph/manifests/nova_compute.pp
++++ b/deployment/puppet/ceph/manifests/nova_compute.pp
+@@ -8,15 +8,28 @@ class ceph::nova_compute (
+   file {'/root/secret.xml':
+     content => template('ceph/secret.erb')
+   }
++  
++  file { '/root/script.sh':
++   ensure => present,
++   path   => '/root/script.sh',
++   source => "puppet:///modules/ceph/script.sh",
++   mode => '0775',
++  }
+ 
+   exec {'Set Ceph RBD secret for Nova':
+     # TODO: clean this command up
++#    command => "virsh secret-set-value --secret $( \
++#      virsh secret-define --file /root/secret.xml | \
++#      egrep -o '[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}') \
++#      --base64 $(ceph auth get-key client.${user}) && \
++#      rm /root/secret.xml",
+     command => "virsh secret-set-value --secret $( \
+       virsh secret-define --file /root/secret.xml | \
+       egrep -o '[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}') \
+-      --base64 $(ceph auth get-key client.${user}) && \
++      --base64 $(/root/script.sh $user) && \
+       rm /root/secret.xml",
+-  }
++ 
++ }
+ 
+   nova_config {
+     'DEFAULT/rbd_secret_uuid':          value => $rbd_secret_uuid;
+@@ -24,5 +37,6 @@ class ceph::nova_compute (
+   }
+ 
+   File['/root/secret.xml'] ->
++  File['/root/script.sh'] ->
+   Exec['Set Ceph RBD secret for Nova']
+ }
+diff --git a/deployment/puppet/osnailyfacter/manifests/cluster_ha.pp b/deployment/puppet/osnailyfacter/manifests/cluster_ha.pp
+index 7caa1ef..86947fe 100644
+--- a/deployment/puppet/osnailyfacter/manifests/cluster_ha.pp
++++ b/deployment/puppet/osnailyfacter/manifests/cluster_ha.pp
+@@ -59,6 +59,7 @@ class osnailyfacter::cluster_ha {
+     }
+   }
+ 
++  $ceph_hash            = $::fuel_settings['ceph']
+   $storage_hash         = $::fuel_settings['storage']
+   $nova_hash            = $::fuel_settings['nova']
+   $mysql_hash           = $::fuel_settings['mysql']
+@@ -172,43 +173,50 @@ class osnailyfacter::cluster_ha {
+   $cinder_iscsi_bind_addr = $::storage_address
+ 
+   # Determine who should get the volume service
+-  if ($::fuel_settings['role'] == 'cinder' or $storage_hash['volumes_lvm']) {
+-    $manage_volumes = 'iscsi'
+-  } elsif ($storage_hash['volumes_ceph']) {
++#  if ($::fuel_settings['role'] == 'cinder' or $storage_hash['volumes_lvm']) {
++#    $manage_volumes = 'iscsi'
++#  } elsif ($storage_hash['volumes_ceph']) {
+     $manage_volumes = 'ceph'
+-  } else {
+-    $manage_volumes = false
+-  }
++#  } else {
++#    $manage_volumes = false
++#  }
+ 
+   #Determine who should be the default backend
+ 
+-  if ($storage_hash['images_ceph']) {
++#  if ($storage_hash['images_ceph']) {
+     $glance_backend = 'ceph'
+-  } else {
+-    $glance_backend = 'swift'
+-  }
++#  } else {
++#    $glance_backend = 'swift'
++#  }
+ 
+   if ($::use_ceph) {
+     $primary_mons   = $controllers
+     $primary_mon    = $controllers[0]['name']
+ 
+     class {'ceph':
+-      primary_mon          => $primary_mon,
++#      primary_mon          => $primary_mon,
++      primary_mon          => $primary_mons,
+       cluster_node_address => $controller_node_public,
+       use_rgw              => $storage_hash['objects_ceph'],
+       glance_backend       => $glance_backend,
+       rgw_pub_ip           => $::fuel_settings['public_vip'],
+       rgw_adm_ip           => $::fuel_settings['management_vip'],
+       rgw_int_ip           => $::fuel_settings['management_vip'],
++      compute_pool         => $ceph_hash['compute_pool'],
++      cinder_pool          => $ceph_hash['cinder_pool'],
++      glance_pool          => $ceph_hash['glance_pool'],
++      compute_user         => $ceph_hash['compute_user'],
++      cinder_user          => $ceph_hash['cinder_user'],
++      glance_user          => $ceph_hash['glance_user'],
+     }
+   }
+ 
+   # Use Swift if it isn't replaced by Ceph for BOTH images and objects
+-  if !($storage_hash['images_ceph'] and $storage_hash['objects_ceph']) {
+-    $use_swift = true
+-  } else {
++#  if !($storage_hash['images_ceph'] and $storage_hash['objects_ceph']) {
++#    $use_swift = true
++#  } else {
+     $use_swift = false
+-  }
++#  }
+ 
+   if ($use_swift) {
+     if !$::fuel_settings['swift_partition'] {
+@@ -627,8 +635,8 @@ class osnailyfacter::cluster_ha {
+ 
+     "ceph-osd" : {
+       #Class Ceph is already defined so it will do it's thing.
+-      notify {"ceph_osd: ${::ceph::osd_devices}": }
+-      notify {"osd_devices:  ${::osd_devices_list}": }
++#      notify {"ceph_osd: ${::ceph::osd_devices}": }
++#      notify {"osd_devices:  ${::osd_devices_list}": }
+     } # CEPH-OSD ENDS
+ 
+   } # ROLE CASE ENDS
+-- 
+1.8.3.2
+
